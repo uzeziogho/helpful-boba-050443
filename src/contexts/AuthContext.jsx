@@ -30,9 +30,14 @@ export function AuthProvider({ children }) {
     if (profileError) throw profileError
 
     // Set currentUser immediately so RequireAuth doesn't redirect before
-    // onAuthStateChange fires (race condition on navigate('/setup'))
+    // onAuthStateChange fires (race condition on navigate('/setup')).
+    // Only do this when Supabase returned a session (email confirmation off);
+    // if email confirmation is on, data.session is null and the user must
+    // verify before they are considered authenticated.
     const user = { ...data.user, uid: data.user.id }
-    setCurrentUser(user)
+    if (data.session) {
+      setCurrentUser(user)
+    }
 
     return user
   }
