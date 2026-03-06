@@ -1,18 +1,5 @@
 import { createContext, useContext, useState } from 'react'
-import {
-  collection,
-  doc,
-  addDoc,
-  setDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-} from 'firebase/firestore'
-import { db } from '../firebase'
+import { supabase } from '../supabase'
 
 const CompanyContext = createContext(null)
 
@@ -20,27 +7,19 @@ export function useCompany() {
   return useContext(CompanyContext)
 }
 
-// ─── Firestore data model ────────────────────────────────────────────────────
+// ─── Supabase / Postgres data model ─────────────────────────────────────────
 //
-// companies/{companyId}
-//   name, domain, plan (starter|growth|enterprise), adminId,
-//   createdAt, employeeSeats, billingEmail
+// companies         – name, domain, plan, admin_id, billing_email, employee_seats
+// users             – id (= auth.users.id), email, display_name, role,
+//                     company_id, department, is_active
+// invitations       – company_id, email, role, department, invited_by, status
+// challenges        – company_id, title, description, type, goal,
+//                     start_date, end_date, created_by, is_active
+// workouts          – user_id, user_name, company_id, challenge_id,
+//                     type, duration, notes
 //
-// users/{uid}  (extended from AuthContext)
-//   email, displayName, role (admin|manager|employee),
-//   companyId, department, createdAt, isActive
-//
-// invitations/{invitationId}
-//   companyId, email, role, department, invitedBy, createdAt, status (pending|accepted|expired)
-//
-// challenges/{challengeId}
-//   companyId, title, description, type (workouts|minutes|streak),
-//   goal (number), startDate, endDate, createdBy, createdAt, isActive
-//
-// workouts/{workoutId}
-//   userId, userName, companyId, challengeId (optional), type,
-//   duration, notes, createdAt
-//
+// Column aliases in .select() keep all returned objects in camelCase so the
+// UI components require zero changes.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PLANS = {
@@ -64,29 +43,46 @@ export const PLANS = {
   },
 }
 
+const COMPANY_SELECT =
+  'id, name, domain, plan, adminId:admin_id, billingEmail:billing_email, employeeSeats:employee_seats'
+
+const USER_SELECT =
+  'id, email, displayName:display_name, role, companyId:company_id, department, isActive:is_active'
+
+const CHALLENGE_SELECT =
+  'id, companyId:company_id, title, description, type, goal, startDate:start_date, endDate:end_date, createdBy:created_by, isActive:is_active, createdAt:created_at'
+
+const WORKOUT_SELECT =
+  'id, userId:user_id, userName:user_name, companyId:company_id, challengeId:challenge_id, type, duration, notes, createdAt:created_at'
+
 export function CompanyProvider({ children }) {
   const [company, setCompany] = useState(null)
 
   async function createCompany({ name, domain, plan, adminId, billingEmail }) {
-    const ref = await addDoc(collection(db, 'companies'), {
-      name,
-      domain: domain || '',
-      plan,
-      adminId,
-      billingEmail,
-      employeeSeats: PLANS[plan].seats === Infinity ? 9999 : PLANS[plan].seats,
-      createdAt: serverTimestamp(),
-    })
-    const snap = await getDoc(ref)
-    const data = { id: snap.id, ...snap.data() }
+    const { data, error } = await supabase
+      .from('companies')
+      .insert({
+        name,
+        domain: domain || '',
+        plan,
+        admin_id: adminId,
+        billing_email: billingEmail,
+        employee_seats: PLANS[plan].seats === Infinity ? 9999 : PLANS[plan].seats,
+      })
+      .select(COMPANY_SELECT)
+      .single()
+    if (error) throw error
     setCompany(data)
     return data
   }
 
   async function fetchCompany(companyId) {
-    const snap = await getDoc(doc(db, 'companies', companyId))
-    if (snap.exists()) {
-      const data = { id: snap.id, ...snap.data() }
+    const { data } = await supabase
+      .from('companies')
+      .select(COMPANY_SELECT)
+      .eq('id', companyId)
+      .single()
+    if (data) {
       setCompany(data)
       return data
     }
@@ -96,108 +92,133 @@ export function CompanyProvider({ children }) {
   // ── Employees ──────────────────────────────────────────────────────────────
 
   async function getEmployees(companyId) {
-    const q = query(
-      collection(db, 'users'),
-      where('companyId', '==', companyId),
-      orderBy('displayName')
-    )
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const { data } = await supabase
+      .from('users')
+      .select(USER_SELECT)
+      .eq('company_id', companyId)
+      .order('display_name')
+    return data || []
   }
 
   async function inviteEmployee({ companyId, email, role, department, invitedBy }) {
-    const existing = query(
-      collection(db, 'invitations'),
-      where('companyId', '==', companyId),
-      where('email', '==', email),
-      where('status', '==', 'pending')
-    )
-    const snap = await getDocs(existing)
-    if (!snap.empty) throw new Error('Invitation already pending for this email.')
+    // Check for existing pending invitation
+    const { data: existing } = await supabase
+      .from('invitations')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('email', email)
+      .eq('status', 'pending')
+      .maybeSingle()
+    if (existing) throw new Error('Invitation already pending for this email.')
 
-    return addDoc(collection(db, 'invitations'), {
-      companyId,
-      email,
-      role: role || 'employee',
-      department: department || '',
-      invitedBy,
-      createdAt: serverTimestamp(),
-      status: 'pending',
-    })
+    const { data, error } = await supabase
+      .from('invitations')
+      .insert({
+        company_id: companyId,
+        email,
+        role: role || 'employee',
+        department: department || '',
+        invited_by: invitedBy,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    return data
   }
 
   async function deactivateEmployee(uid) {
-    return updateDoc(doc(db, 'users', uid), { isActive: false })
+    const { error } = await supabase
+      .from('users')
+      .update({ is_active: false })
+      .eq('id', uid)
+    if (error) throw error
   }
 
   async function updateEmployeeRole(uid, role, department) {
-    return updateDoc(doc(db, 'users', uid), { role, department })
+    const { error } = await supabase
+      .from('users')
+      .update({ role, department })
+      .eq('id', uid)
+    if (error) throw error
   }
 
   // ── Challenges ─────────────────────────────────────────────────────────────
 
   async function getChallenges(companyId) {
-    const q = query(
-      collection(db, 'challenges'),
-      where('companyId', '==', companyId),
-      orderBy('createdAt', 'desc')
-    )
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const { data } = await supabase
+      .from('challenges')
+      .select(CHALLENGE_SELECT)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+    return data || []
   }
 
   async function createChallenge({ companyId, title, description, type, goal, startDate, endDate, createdBy }) {
-    return addDoc(collection(db, 'challenges'), {
-      companyId,
-      title,
-      description,
-      type,
-      goal: Number(goal),
-      startDate,
-      endDate,
-      createdBy,
-      createdAt: serverTimestamp(),
-      isActive: true,
-    })
+    const { data, error } = await supabase
+      .from('challenges')
+      .insert({
+        company_id: companyId,
+        title,
+        description,
+        type,
+        goal: Number(goal),
+        start_date: startDate,
+        end_date: endDate,
+        created_by: createdBy,
+        is_active: true,
+      })
+      .select(CHALLENGE_SELECT)
+      .single()
+    if (error) throw error
+    return data
   }
 
   async function toggleChallenge(challengeId, isActive) {
-    return updateDoc(doc(db, 'challenges', challengeId), { isActive })
+    const { error } = await supabase
+      .from('challenges')
+      .update({ is_active: isActive })
+      .eq('id', challengeId)
+    if (error) throw error
   }
 
   // ── Workouts ───────────────────────────────────────────────────────────────
 
   async function logWorkout({ userId, userName, companyId, challengeId, type, duration, notes }) {
-    return addDoc(collection(db, 'workouts'), {
-      userId,
-      userName,
-      companyId,
-      challengeId: challengeId || null,
-      type,
-      duration: Number(duration),
-      notes: notes || '',
-      createdAt: serverTimestamp(),
-    })
+    const { data, error } = await supabase
+      .from('workouts')
+      .insert({
+        user_id: userId,
+        user_name: userName,
+        company_id: companyId,
+        challenge_id: challengeId || null,
+        type,
+        duration: Number(duration),
+        notes: notes || '',
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    return data
   }
 
   async function getWorkouts(companyId, limit = 50) {
-    const q = query(
-      collection(db, 'workouts'),
-      where('companyId', '==', companyId),
-      orderBy('createdAt', 'desc')
-    )
-    const snap = await getDocs(q)
-    return snap.docs.slice(0, limit).map((d) => ({ id: d.id, ...d.data() }))
+    const { data } = await supabase
+      .from('workouts')
+      .select(WORKOUT_SELECT)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    return data || []
   }
 
   async function getMyWorkouts(userId) {
-    const q = query(
-      collection(db, 'workouts'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    )
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const { data } = await supabase
+      .from('workouts')
+      .select(WORKOUT_SELECT)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    return data || []
   }
 
   // ── Reports ────────────────────────────────────────────────────────────────
@@ -224,13 +245,14 @@ export function CompanyProvider({ children }) {
       .sort((a, b) => b.minutes - a.minutes)
       .slice(0, 10)
 
+    const activeEmployees = employees.filter((e) => e.isActive)
     return {
-      totalEmployees: employees.filter((e) => e.isActive).length,
+      totalEmployees: activeEmployees.length,
       activeParticipants: activeEmployeeIds.size,
       totalSessions: workouts.length,
       totalMinutes,
-      participationRate: employees.length
-        ? Math.round((activeEmployeeIds.size / employees.filter((e) => e.isActive).length) * 100)
+      participationRate: activeEmployees.length
+        ? Math.round((activeEmployeeIds.size / activeEmployees.length) * 100)
         : 0,
       leaderboard,
     }

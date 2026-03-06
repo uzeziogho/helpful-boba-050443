@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Zap, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { supabase } from '../supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 
 export default function AcceptInvite() {
   const { token } = useParams()
-  const { currentUser, register, userProfile, setUserProfile } = useAuth()
+  const { register, setUserProfile } = useAuth()
   const { fetchCompany } = useCompany()
   const navigate = useNavigate()
 
@@ -20,17 +19,21 @@ export default function AcceptInvite() {
 
   useEffect(() => {
     async function fetchInvite() {
-      // token = invitationId stored in the invite link
       try {
-        const snap = await getDocs(
-          query(collection(db, 'invitations'), where('__name__', '==', token), where('status', '==', 'pending'))
-        )
-        if (snap.empty) {
+        // token is the invitation row UUID used as the invite link identifier
+        const { data, error } = await supabase
+          .from('invitations')
+          .select('id, companyId:company_id, email, role, department')
+          .eq('id', token)
+          .eq('status', 'pending')
+          .single()
+
+        if (error || !data) {
           toast.error('Invitation not found or already used.')
           navigate('/login')
           return
         }
-        setInvite({ id: snap.docs[0].id, ...snap.docs[0].data() })
+        setInvite(data)
       } catch {
         toast.error('Failed to load invitation.')
         navigate('/login')
@@ -45,17 +48,28 @@ export default function AcceptInvite() {
     setSubmitting(true)
     try {
       const user = await register(invite.email, form.password, form.displayName)
-      // Update user profile with company info from invite
-      const { updateDoc: _, ...rest } = await import('firebase/firestore')
-      await updateDoc(doc(db, 'users', user.uid), {
+
+      // Link user to company with role from invite
+      await supabase
+        .from('users')
+        .update({
+          company_id: invite.companyId,
+          role: invite.role || 'employee',
+          department: invite.department || '',
+        })
+        .eq('id', user.id)
+
+      setUserProfile((prev) => ({
+        ...prev,
         companyId: invite.companyId,
         role: invite.role || 'employee',
-        department: invite.department || '',
-      })
-      setUserProfile((prev) => ({ ...prev, companyId: invite.companyId, role: invite.role || 'employee' }))
+      }))
 
       // Mark invite as accepted
-      await updateDoc(doc(db, 'invitations', invite.id), { status: 'accepted' })
+      await supabase
+        .from('invitations')
+        .update({ status: 'accepted' })
+        .eq('id', invite.id)
 
       await fetchCompany(invite.companyId)
       toast.success('Welcome to the team!')
