@@ -4,7 +4,8 @@ import { Building2, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { supabase } from '../supabase'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 
 export default function CompanySetup() {
   const { currentUser, setUserProfile } = useAuth()
@@ -32,11 +33,7 @@ export default function CompanySetup() {
       })
 
       // Update the user's profile with admin role + companyId
-      const { error } = await supabase
-        .from('users')
-        .update({ company_id: company.id, role: 'admin' })
-        .eq('id', currentUser.uid)
-      if (error) throw error
+      await updateDoc(doc(db, 'users', currentUser.uid), { companyId: company.id, role: 'admin' })
 
       setUserProfile((prev) => ({ ...prev, companyId: company.id, role: 'admin' }))
       sessionStorage.removeItem('selectedPlan')

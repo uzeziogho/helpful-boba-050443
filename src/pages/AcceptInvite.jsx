@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Zap, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { supabase } from '../supabase'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 
@@ -20,20 +21,13 @@ export default function AcceptInvite() {
   useEffect(() => {
     async function fetchInvite() {
       try {
-        // token is the invitation row UUID used as the invite link identifier
-        const { data, error } = await supabase
-          .from('invitations')
-          .select('id, companyId:company_id, email, role, department')
-          .eq('id', token)
-          .eq('status', 'pending')
-          .single()
-
-        if (error || !data) {
+        const snap = await getDoc(doc(db, 'invitations', token))
+        if (!snap.exists() || snap.data().status !== 'pending') {
           toast.error('Invitation not found or already used.')
           navigate('/login')
           return
         }
-        setInvite(data)
+        setInvite({ id: snap.id, ...snap.data() })
       } catch {
         toast.error('Failed to load invitation.')
         navigate('/login')
@@ -50,14 +44,11 @@ export default function AcceptInvite() {
       const user = await register(invite.email, form.password, form.displayName)
 
       // Link user to company with role from invite
-      await supabase
-        .from('users')
-        .update({
-          company_id: invite.companyId,
-          role: invite.role || 'employee',
-          department: invite.department || '',
-        })
-        .eq('id', user.id)
+      await updateDoc(doc(db, 'users', user.uid), {
+        companyId: invite.companyId,
+        role: invite.role || 'employee',
+        department: invite.department || '',
+      })
 
       setUserProfile((prev) => ({
         ...prev,
@@ -66,10 +57,7 @@ export default function AcceptInvite() {
       }))
 
       // Mark invite as accepted
-      await supabase
-        .from('invitations')
-        .update({ status: 'accepted' })
-        .eq('id', invite.id)
+      await updateDoc(doc(db, 'invitations', invite.id), { status: 'accepted' })
 
       await fetchCompany(invite.companyId)
       toast.success('Welcome to the team!')

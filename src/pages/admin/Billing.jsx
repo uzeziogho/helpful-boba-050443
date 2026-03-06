@@ -5,7 +5,8 @@ import { useBilling } from '../../contexts/BillingContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCompany } from '../../contexts/CompanyContext'
 import { PLANS } from '../../contexts/CompanyContext'
-import { supabase } from '../../supabase'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../firebase'
 import toast from 'react-hot-toast'
 
 const PLAN_KEYS = ['starter', 'growth', 'enterprise']
@@ -26,11 +27,11 @@ export default function AdminBilling() {
       if (subscription?.active) {
         await switchPlan(planKey, currentUser.email)
         // Keep company.plan in sync
-        await supabase.from('companies').update({ plan: planKey }).eq('id', company.id)
+        await updateDoc(doc(db, 'companies', company.id), { plan: planKey })
         toast.success(`Switched to ${PLANS[planKey].name} plan.`)
       } else {
         await subscribe(planKey, currentUser.email)
-        await supabase.from('companies').update({ plan: planKey }).eq('id', company.id)
+        await updateDoc(doc(db, 'companies', company.id), { plan: planKey })
         toast.success(`Subscribed to ${PLANS[planKey].name}!`)
       }
     } catch (err) {

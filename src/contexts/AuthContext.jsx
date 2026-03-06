@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../supabase'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+} from 'firebase/auth'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -7,93 +15,58 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-// Selects all profile fields with camelCase aliases
-const PROFILE_SELECT =
-  'id, email, displayName:display_name, role, companyId:company_id, department, isActive:is_active'
-
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   async function register(email, password, displayName) {
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
-
-    // Insert profile row (the DB trigger is a safety net; we do it explicitly too)
-    const { error: profileError } = await supabase.from('users').upsert({
-      id: data.user.id,
+    const { user } = await createUserWithEmailAndPassword(auth, email, password)
+    await updateProfile(user, { displayName })
+    await setDoc(doc(db, 'users', user.uid), {
       email,
-      display_name: displayName,
-      is_active: true,
+      displayName,
+      role: null,
+      companyId: null,
+      department: '',
+      isActive: true,
     })
-    if (profileError) throw profileError
-
-    // Set currentUser immediately so RequireAuth doesn't redirect before
-    // onAuthStateChange fires (race condition on navigate('/setup')).
-    // Only do this when Supabase returned a session (email confirmation off);
-    // if email confirmation is on, data.session is null and the user must
-    // verify before they are considered authenticated.
-    const user = { ...data.user, uid: data.user.id }
-    if (data.session) {
-      setCurrentUser(user)
-    }
-
-    return user
+    const profile = { id: user.uid, email, displayName, role: null, companyId: null, department: '', isActive: true }
+    setUserProfile(profile)
+    return { ...user, uid: user.uid }
   }
 
   async function login(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-    return data
+    return signInWithEmailAndPassword(auth, email, password)
   }
 
   async function logout() {
     setUserProfile(null)
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    return signOut(auth)
   }
 
   async function fetchUserProfile(uid) {
-    const { data } = await supabase
-      .from('users')
-      .select(PROFILE_SELECT)
-      .eq('id', uid)
-      .single()
-
-    if (data) {
-      setUserProfile(data)
-      return data
+    const snap = await getDoc(doc(db, 'users', uid))
+    if (snap.exists()) {
+      const profile = { id: uid, ...snap.data() }
+      setUserProfile(profile)
+      return profile
     }
     return null
   }
 
   useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const user = session?.user ?? null
-      setCurrentUser(user ? { ...user, uid: user.id } : null)
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        fetchUserProfile(user.id).finally(() => setLoading(false))
+        setCurrentUser({ ...user, uid: user.uid })
+        await fetchUserProfile(user.uid)
       } else {
-        setLoading(false)
+        setCurrentUser(null)
+        setUserProfile(null)
       }
+      setLoading(false)
     })
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const user = session?.user ?? null
-        setCurrentUser(user ? { ...user, uid: user.id } : null)
-        if (user) {
-          await fetchUserProfile(user.id)
-        } else {
-          setUserProfile(null)
-        }
-      }
-    )
-
-    return () => subscription.unsubscribe()
+    return unsubscribe
   }, [])
 
   const value = {
