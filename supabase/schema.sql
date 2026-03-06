@@ -94,6 +94,15 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- ── Helper: get current user's company_id without triggering RLS ─────────────
+-- Uses security definer so it bypasses RLS on public.users,
+-- preventing infinite recursion in policies that query this table.
+
+create or replace function public.get_my_company_id()
+returns uuid as $$
+  select company_id from public.users where id = auth.uid()
+$$ language sql security definer stable;
+
 -- ── Row-Level Security ────────────────────────────────────────
 
 alter table public.users        enable row level security;
@@ -106,9 +115,10 @@ alter table public.workouts     enable row level security;
 create policy "Own profile" on public.users
   for all using (auth.uid() = id);
 
+-- Uses get_my_company_id() to avoid recursive self-reference on public.users
 create policy "View teammates" on public.users
   for select using (
-    company_id in (select company_id from public.users where id = auth.uid())
+    company_id = public.get_my_company_id()
   );
 
 -- companies
