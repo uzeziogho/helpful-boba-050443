@@ -29,7 +29,12 @@ export function AuthProvider({ children }) {
     })
     if (profileError) throw profileError
 
-    return { ...data.user, uid: data.user.id }
+    // Set currentUser immediately so RequireAuth doesn't redirect before
+    // onAuthStateChange fires (race condition on navigate('/setup'))
+    const user = { ...data.user, uid: data.user.id }
+    setCurrentUser(user)
+
+    return user
   }
 
   async function login(email, password) {
