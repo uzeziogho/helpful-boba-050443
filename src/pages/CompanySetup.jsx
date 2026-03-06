@@ -40,7 +40,7 @@ export default function CompanySetup() {
 
       setUserProfile((prev) => ({ ...prev, companyId: company.id, role: 'admin' }))
       sessionStorage.removeItem('selectedPlan')
-      toast.success(`Welcome to FitSquad Business, ${form.name}!`)
+      toast.success(`Welcome to FitBud Business, ${form.name}!`)
       navigate('/admin')
     } catch (err) {
       toast.error(err.message || 'Failed to create company.')

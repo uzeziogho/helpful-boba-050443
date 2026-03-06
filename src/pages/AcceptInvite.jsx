@@ -97,7 +97,7 @@ export default function AcceptInvite() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">You're invited!</h1>
           <p className="text-gray-500 mt-1 text-sm">
-            Join your team's wellness program on FitSquad Business.
+            Join your team's wellness program on FitBud Business.
           </p>
           <p className="text-xs text-brand-600 font-medium mt-2 bg-brand-50 inline-block px-3 py-1 rounded-full">
             {invite.email}

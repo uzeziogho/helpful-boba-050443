@@ -36,7 +36,7 @@ export default function AdminLayout({ children }) {
             <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">FitSquad <span className="text-brand-600">Business</span></span>
+            <span className="font-bold text-gray-900 text-sm">FitBud <span className="text-brand-600">Business</span></span>
           </div>
           {company && (
             <div className="mt-3">

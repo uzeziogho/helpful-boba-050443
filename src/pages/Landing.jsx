@@ -51,7 +51,7 @@ export default function Landing() {
             <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-lg">FitSquad <span className="text-brand-600">Business</span></span>
+            <span className="font-bold text-gray-900 text-lg">FitBud <span className="text-brand-600">Business</span></span>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm text-gray-600 hover:text-gray-900">Sign in</Link>
@@ -70,7 +70,7 @@ export default function Landing() {
           <span className="text-brand-600">more productive teams.</span>
         </h1>
         <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
-          FitSquad Business gives HR teams the tools to run engaging wellness programs, track participation, and prove ROI — without the enterprise price tag.
+          FitBud Business gives HR teams the tools to run engaging wellness programs, track participation, and prove ROI — without the enterprise price tag.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Link to="/register" className="btn-primary px-8 py-3 text-base">
@@ -172,7 +172,7 @@ export default function Landing() {
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to build a healthier team?</h2>
-        <p className="text-gray-500 mb-8">Join companies already using FitSquad Business to improve employee wellbeing.</p>
+        <p className="text-gray-500 mb-8">Join companies already using FitBud Business to improve employee wellbeing.</p>
         <Link to="/register" className="btn-primary px-10 py-4 text-base">
           Get started free
         </Link>
@@ -185,9 +185,9 @@ export default function Landing() {
             <div className="w-6 h-6 bg-brand-600 rounded flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-700">FitSquad Business</span>
+            <span className="text-sm font-semibold text-gray-700">FitBud Business</span>
           </div>
-          <p className="text-xs text-gray-400">© {new Date().getFullYear()} FitSquad Business. All rights reserved.</p>
+          <p className="text-xs text-gray-400">© {new Date().getFullYear()} FitBud Business. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -31,7 +31,7 @@ export default function EmployeeLayout({ children }) {
             <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">FitSquad <span className="text-brand-600">Business</span></span>
+            <span className="font-bold text-gray-900 text-sm">FitBud <span className="text-brand-600">Business</span></span>
           </div>
           {company && (
             <p className="text-xs text-gray-500 mt-2 truncate">{company.name}</p>

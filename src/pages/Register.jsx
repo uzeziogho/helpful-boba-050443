@@ -49,7 +49,7 @@ export default function Register() {
             <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-lg">FitSquad <span className="text-brand-600">Business</span></span>
+            <span className="font-bold text-gray-900 text-lg">FitBud <span className="text-brand-600">Business</span></span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Start your free trial</h1>
           <p className="text-gray-500 mt-1 text-sm">30 days free · No credit card required</p>
