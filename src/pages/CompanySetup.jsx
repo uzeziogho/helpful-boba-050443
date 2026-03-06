@@ -41,7 +41,8 @@ export default function CompanySetup() {
       setUserProfile((prev) => ({ ...prev, companyId: company.id, role: 'admin' }))
       sessionStorage.removeItem('selectedPlan')
       toast.success(`Welcome to FitSquad Business, ${form.name}!`)
-      navigate('/admin')
+      // Send admin to billing so they can complete the RevenueCat subscription
+      navigate('/admin/billing')
     } catch (err) {
       toast.error(err.message || 'Failed to create company.')
       setLoading(false)
@@ -97,7 +98,7 @@ export default function CompanySetup() {
 
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 flex items-start gap-2">
               <Zap className="w-4 h-4 text-brand-600 flex-shrink-0 mt-0.5" />
-              <span>Plan selected: <strong className="capitalize">{plan}</strong>. You'll be able to invite employees right after setup.</span>
+              <span>Plan selected: <strong className="capitalize">{plan}</strong>. You'll complete billing on the next step.</span>
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
