@@ -11,6 +11,7 @@ import AdminDashboard from './pages/admin/Dashboard'
 import AdminEmployees from './pages/admin/Employees'
 import AdminChallenges from './pages/admin/Challenges'
 import AdminReports from './pages/admin/Reports'
+import AdminBilling from './pages/admin/Billing'
 
 import EmployeeDashboard from './pages/employee/Dashboard'
 import EmployeeWorkouts from './pages/employee/Workouts'
@@ -62,6 +63,7 @@ export default function App() {
       <Route path="/admin/employees" element={<RequireAuth><RequireRole role="admin"><AdminEmployees /></RequireRole></RequireAuth>} />
       <Route path="/admin/challenges" element={<RequireAuth><RequireRole role="admin"><AdminChallenges /></RequireRole></RequireAuth>} />
       <Route path="/admin/reports" element={<RequireAuth><RequireRole role="admin"><AdminReports /></RequireRole></RequireAuth>} />
+      <Route path="/admin/billing" element={<RequireAuth><RequireRole role="admin"><AdminBilling /></RequireRole></RequireAuth>} />
 
       {/* Employee */}
       <Route path="/me" element={<RequireAuth><EmployeeDashboard /></RequireAuth>} />

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Trophy, BarChart2, LogOut, Zap, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Users, Trophy, BarChart2, CreditCard, LogOut, Zap, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { PLANS } from '../contexts/CompanyContext'
@@ -10,6 +10,7 @@ const NAV = [
   { to: '/admin/employees', icon: Users, label: 'Employees' },
   { to: '/admin/challenges', icon: Trophy, label: 'Challenges' },
   { to: '/admin/reports', icon: BarChart2, label: 'Reports' },
+  { to: '/admin/billing', icon: CreditCard, label: 'Billing' },
 ]
 
 export default function AdminLayout({ children }) {
