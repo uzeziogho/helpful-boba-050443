@@ -53,28 +53,58 @@ export function AuthProvider({ children }) {
   }
 
   async function fetchUserProfile(uid) {
-    const snap = await getDoc(doc(db, 'users', uid))
-    if (snap.exists()) {
-      const profile = { id: uid, ...snap.data() }
-      setUserProfile(profile)
-      return profile
+    try {
+      const snap = await getDoc(doc(db, 'users', uid))
+      if (snap.exists()) {
+        const profile = { id: uid, ...snap.data() }
+        setUserProfile(profile)
+        return profile
+      }
+    } catch (err) {
+      console.error('Failed to fetch user profile:', err)
     }
     return null
+  }
+
+  async function ensureUserProfile(user) {
+    let profile = await fetchUserProfile(user.uid)
+    if (!profile) {
+      // Auto-create Firestore doc for users who registered before the migration
+      const newProfile = {
+        email: user.email || '',
+        displayName: user.displayName || '',
+        role: null,
+        companyId: null,
+        department: '',
+        isActive: true,
+      }
+      try {
+        await setDoc(doc(db, 'users', user.uid), newProfile)
+        profile = { id: user.uid, ...newProfile }
+        setUserProfile(profile)
+      } catch (err) {
+        console.error('Failed to create user profile:', err)
+      }
+    }
+    return profile
   }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (registeringRef.current) {
-        // register() manages state itself; skip to avoid race condition
         setLoading(false)
         return
       }
-      if (user) {
-        setCurrentUser({ ...user, uid: user.uid })
-        await fetchUserProfile(user.uid)
-      } else {
-        setCurrentUser(null)
-        setUserProfile(null)
+      try {
+        if (user) {
+          setCurrentUser({ ...user, uid: user.uid })
+          await ensureUserProfile(user)
+        } else {
+          setCurrentUser(null)
+          setUserProfile(null)
+        }
+      } catch (err) {
+        console.error('Auth state change error:', err)
       }
       setLoading(false)
     })
@@ -89,6 +119,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     fetchUserProfile,
+    ensureUserProfile,
   }
 
   return (

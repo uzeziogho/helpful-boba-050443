@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 
 export default function Login() {
-  const { login, fetchUserProfile } = useAuth()
+  const { login, ensureUserProfile } = useAuth()
   const { fetchCompany } = useCompany()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
@@ -17,7 +17,7 @@ export default function Login() {
     setLoading(true)
     try {
       const { user } = await login(form.email, form.password)
-      const profile = await fetchUserProfile(user.uid)
+      const profile = await ensureUserProfile(user)
       if (!profile?.companyId) {
         navigate('/setup')
       } else {
