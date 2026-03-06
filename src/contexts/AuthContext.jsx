@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -19,21 +19,28 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const registeringRef = useRef(false)
 
   async function register(email, password, displayName) {
-    const { user } = await createUserWithEmailAndPassword(auth, email, password)
-    await updateProfile(user, { displayName })
-    await setDoc(doc(db, 'users', user.uid), {
-      email,
-      displayName,
-      role: null,
-      companyId: null,
-      department: '',
-      isActive: true,
-    })
-    const profile = { id: user.uid, email, displayName, role: null, companyId: null, department: '', isActive: true }
-    setUserProfile(profile)
-    return { ...user, uid: user.uid }
+    registeringRef.current = true
+    try {
+      const { user } = await createUserWithEmailAndPassword(auth, email, password)
+      await updateProfile(user, { displayName })
+      await setDoc(doc(db, 'users', user.uid), {
+        email,
+        displayName,
+        role: null,
+        companyId: null,
+        department: '',
+        isActive: true,
+      })
+      const profile = { id: user.uid, email, displayName, role: null, companyId: null, department: '', isActive: true }
+      setCurrentUser({ ...user, uid: user.uid })
+      setUserProfile(profile)
+      return { ...user, uid: user.uid }
+    } finally {
+      registeringRef.current = false
+    }
   }
 
   async function login(email, password) {
@@ -57,6 +64,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (registeringRef.current) {
+        // register() manages state itself; skip to avoid race condition
+        setLoading(false)
+        return
+      }
       if (user) {
         setCurrentUser({ ...user, uid: user.uid })
         await fetchUserProfile(user.uid)

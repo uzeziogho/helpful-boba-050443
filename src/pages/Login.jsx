@@ -6,8 +6,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 
 export default function Login() {
-  const { login, userProfile } = useAuth()
-  const { fetchCompany, setCompany } = useCompany()
+  const { login, fetchUserProfile } = useAuth()
+  const { fetchCompany } = useCompany()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
@@ -16,22 +16,18 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      await login(form.email, form.password)
-      // Profile will be fetched by AuthContext listener
-      // Give it a moment then redirect
-      setTimeout(async () => {
-        const profile = userProfile
-        if (!profile?.companyId) {
-          navigate('/setup')
+      const { user } = await login(form.email, form.password)
+      const profile = await fetchUserProfile(user.uid)
+      if (!profile?.companyId) {
+        navigate('/setup')
+      } else {
+        await fetchCompany(profile.companyId)
+        if (profile.role === 'admin' || profile.role === 'manager') {
+          navigate('/admin')
         } else {
-          await fetchCompany(profile.companyId)
-          if (profile.role === 'admin' || profile.role === 'manager') {
-            navigate('/admin')
-          } else {
-            navigate('/me')
-          }
+          navigate('/me')
         }
-      }, 500)
+      }
     } catch (err) {
       toast.error(err.message || 'Login failed. Please check your credentials.')
       setLoading(false)
