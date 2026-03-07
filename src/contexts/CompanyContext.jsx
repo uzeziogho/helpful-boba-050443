@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react'
 import {
-  collection, doc, addDoc, getDoc, getDocs, updateDoc, query, where, orderBy, limit,
+  collection, doc, addDoc, getDoc, getDocs, updateDoc, query, where, limit,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -67,9 +67,9 @@ export function CompanyProvider({ children }) {
   // ── Employees ───────────────────────────────────────────────────────────────
 
   async function getEmployees(companyId) {
-    const q = query(collection(db, 'users'), where('companyId', '==', companyId), orderBy('displayName'))
+    const q = query(collection(db, 'users'), where('companyId', '==', companyId))
     const snap = await getDocs(q)
-    return snap.docs.map(docToData)
+    return snap.docs.map(docToData).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
   }
 
   async function inviteEmployee({ companyId, email, role, department, invitedBy }) {
@@ -99,9 +99,9 @@ export function CompanyProvider({ children }) {
   // ── Challenges ──────────────────────────────────────────────────────────────
 
   async function getChallenges(companyId) {
-    const q = query(collection(db, 'challenges'), where('companyId', '==', companyId), orderBy('createdAt', 'desc'))
+    const q = query(collection(db, 'challenges'), where('companyId', '==', companyId))
     const snap = await getDocs(q)
-    return snap.docs.map(docToData)
+    return snap.docs.map(docToData).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
   }
 
   async function createChallenge({ companyId, title, description, type, goal, startDate, endDate, createdBy }) {
@@ -129,15 +129,17 @@ export function CompanyProvider({ children }) {
   }
 
   async function getWorkouts(companyId, lim = 50) {
-    const q = query(collection(db, 'workouts'), where('companyId', '==', companyId), orderBy('createdAt', 'desc'), limit(lim))
+    const q = query(collection(db, 'workouts'), where('companyId', '==', companyId))
     const snap = await getDocs(q)
     return snap.docs.map(docToData)
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, lim)
   }
 
   async function getMyWorkouts(userId) {
-    const q = query(collection(db, 'workouts'), where('userId', '==', userId), orderBy('createdAt', 'desc'))
+    const q = query(collection(db, 'workouts'), where('userId', '==', userId))
     const snap = await getDocs(q)
-    return snap.docs.map(docToData)
+    return snap.docs.map(docToData).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
   }
 
   // ── Reports ─────────────────────────────────────────────────────────────────
