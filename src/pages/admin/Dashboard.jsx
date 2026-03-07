@@ -16,16 +16,17 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!userProfile?.companyId) return
     async function load() {
-      if (!userProfile?.companyId) return
       try {
+        if (!company) await fetchCompany(userProfile.companyId)
         const [rep, chal] = await Promise.all([
           getParticipationReport(userProfile.companyId),
           getChallenges(userProfile.companyId),
         ])
         setReport(rep)
         setChallenges(chal)
-      } catch (err) {
+      } catch {
         toast.error('Failed to load dashboard data.')
       }
       setLoading(false)
@@ -33,10 +34,14 @@ export default function AdminDashboard() {
     load()
   }, [userProfile?.companyId])
 
-  async function handleToggleChallenge(id, isActive) {
-    await toggleChallenge(id, isActive)
-    setChallenges((prev) => prev.map((c) => (c.id === id ? { ...c, isActive } : c)))
-    toast.success(`Challenge ${isActive ? 'activated' : 'deactivated'}.`)
+  async function handleToggle(id, isActive) {
+    try {
+      await toggleChallenge(id, isActive)
+      setChallenges((prev) => prev.map((c) => (c.id === id ? { ...c, isActive } : c)))
+      toast.success(`Challenge ${isActive ? 'activated' : 'deactivated'}.`)
+    } catch {
+      toast.error('Failed to update challenge.')
+    }
   }
 
   const activeChallenges = challenges.filter((c) => c.isActive)
@@ -51,7 +56,7 @@ export default function AdminDashboard() {
               Welcome back{userProfile?.displayName ? `, ${userProfile.displayName.split(' ')[0]}` : ''}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              {company?.name} · HR Admin Dashboard
+              {company?.name ? `${company.name} · ` : ''}HR Admin Dashboard
             </p>
           </div>
           <Link to="/admin/challenges" className="btn-primary flex items-center gap-2">
@@ -60,45 +65,21 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        {/* Stats grid */}
+        {/* Stats */}
         {loading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="card animate-pulse h-24 bg-gray-100" />
-            ))}
+            {[...Array(4)].map((_, i) => <div key={i} className="card animate-pulse h-24 bg-gray-100" />)}
           </div>
         ) : report && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatsCard
-              label="Total employees"
-              value={report.totalEmployees}
-              icon={Users}
-              color="brand"
-            />
-            <StatsCard
-              label="Active participants"
-              value={report.activeParticipants}
-              sub={`${report.participationRate}% participation rate`}
-              icon={TrendingUp}
-              color="green"
-            />
-            <StatsCard
-              label="Workout sessions"
-              value={report.totalSessions.toLocaleString()}
-              sub="All time"
-              icon={Activity}
-              color="orange"
-            />
-            <StatsCard
-              label="Active challenges"
-              value={activeChallenges.length}
-              icon={Trophy}
-              color="purple"
-            />
+            <StatsCard label="Total employees" value={report.totalEmployees} icon={Users} color="brand" />
+            <StatsCard label="Active participants" value={report.activeParticipants} sub={`${report.participationRate}% participation`} icon={TrendingUp} color="green" />
+            <StatsCard label="Workout sessions" value={report.totalSessions.toLocaleString()} sub="All time" icon={Activity} color="orange" />
+            <StatsCard label="Active challenges" value={activeChallenges.length} icon={Trophy} color="purple" />
           </div>
         )}
 
-        {/* Participation rate banner */}
+        {/* Participation banner */}
         {report && (
           <div className="card mb-8 bg-gradient-to-r from-brand-600 to-brand-700 border-0 text-white">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -111,10 +92,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex flex-col gap-2">
                 <div className="w-48 bg-brand-800 rounded-full h-3">
-                  <div
-                    className="bg-white h-3 rounded-full transition-all"
-                    style={{ width: `${report.participationRate}%` }}
-                  />
+                  <div className="bg-white h-3 rounded-full" style={{ width: `${report.participationRate}%` }} />
                 </div>
                 <Link to="/admin/reports" className="text-white text-sm flex items-center gap-1 hover:underline">
                   View full report <ArrowRight className="w-3 h-3" />
@@ -146,7 +124,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-3">
                 {activeChallenges.slice(0, 3).map((c) => (
-                  <ChallengeCard key={c.id} challenge={c} onToggle={handleToggleChallenge} />
+                  <ChallengeCard key={c.id} challenge={c} onToggle={handleToggle} />
                 ))}
               </div>
             )}

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Zap } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { useAuth } from '../contexts/AuthContext'
-import { useCompany } from '../contexts/CompanyContext'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../contexts/AuthContext'
+import { useCompany } from '../contexts/CompanyContext'
+import toast from 'react-hot-toast'
 
 export default function CompanySetup() {
   const { currentUser, setUserProfile } = useAuth()
@@ -31,17 +31,16 @@ export default function CompanySetup() {
         adminId: currentUser.uid,
         billingEmail: form.billingEmail,
       })
-
-      // Update the user's profile with admin role + companyId
-      await updateDoc(doc(db, 'users', currentUser.uid), { companyId: company.id, role: 'admin' })
-
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        companyId: company.id,
+        role: 'admin',
+      })
       setUserProfile((prev) => ({ ...prev, companyId: company.id, role: 'admin' }))
       sessionStorage.removeItem('selectedPlan')
       toast.success(`Welcome to FitSquad Business, ${form.name}!`)
-      // Send admin to billing so they can complete the RevenueCat subscription
-      navigate('/admin/billing')
+      navigate('/admin')
     } catch (err) {
-      toast.error(err.message || 'Failed to create company.')
+      toast.error(err.message || 'Failed to create company. Please try again.')
       setLoading(false)
     }
   }
@@ -60,7 +59,9 @@ export default function CompanySetup() {
         <div className="card">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Company name <span className="text-red-500">*</span>
+              </label>
               <input
                 required
                 className="input"
@@ -69,8 +70,11 @@ export default function CompanySetup() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company domain <span className="text-gray-400">(optional)</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Company domain <span className="text-gray-400">(optional)</span>
+              </label>
               <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-brand-500 focus-within:border-transparent">
                 <span className="px-3 text-gray-400 text-sm bg-gray-50 border-r border-gray-300 py-2">@</span>
                 <input
@@ -82,8 +86,11 @@ export default function CompanySetup() {
               </div>
               <p className="text-xs text-gray-400 mt-1">Used to auto-verify employee email addresses</p>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Billing email <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Billing email <span className="text-red-500">*</span>
+              </label>
               <input
                 type="email"
                 required
@@ -95,7 +102,9 @@ export default function CompanySetup() {
 
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 flex items-start gap-2">
               <Zap className="w-4 h-4 text-brand-600 flex-shrink-0 mt-0.5" />
-              <span>Plan selected: <strong className="capitalize">{plan}</strong>. You'll complete billing on the next step.</span>
+              <span>
+                Plan selected: <strong className="capitalize">{plan}</strong>. You can manage billing from the admin dashboard.
+              </span>
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">

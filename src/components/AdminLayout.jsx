@@ -1,99 +1,86 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Trophy, BarChart2, CreditCard, LogOut, Zap, ChevronRight } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, Users, Trophy, BarChart2, LogOut, Zap } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
-import { PLANS } from '../contexts/CompanyContext'
 import toast from 'react-hot-toast'
 
-const NAV = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
-  { to: '/admin/employees', icon: Users, label: 'Employees' },
-  { to: '/admin/challenges', icon: Trophy, label: 'Challenges' },
-  { to: '/admin/reports', icon: BarChart2, label: 'Reports' },
-  { to: '/admin/billing', icon: CreditCard, label: 'Billing' },
+const nav = [
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/admin/employees', label: 'Employees', icon: Users },
+  { to: '/admin/challenges', label: 'Challenges', icon: Trophy },
+  { to: '/admin/reports', label: 'Reports', icon: BarChart2 },
 ]
 
 export default function AdminLayout({ children }) {
-  const { currentUser, userProfile, logout } = useAuth()
+  const { userProfile, logout } = useAuth()
   const { company } = useCompany()
+  const location = useLocation()
   const navigate = useNavigate()
 
   async function handleLogout() {
     await logout()
     toast.success('Signed out')
-    navigate('/')
+    navigate('/login')
   }
 
-  const planLabel = company?.plan ? PLANS[company.plan]?.name : null
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col fixed h-full">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">FitSquad <span className="text-brand-600">Business</span></span>
+      <aside className="w-64 bg-white border-r border-gray-100 flex flex-col">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+            <Zap className="w-5 h-5 text-white" />
           </div>
-          {company && (
-            <div className="mt-3">
-              <p className="text-xs font-semibold text-gray-900 truncate">{company.name}</p>
-              {planLabel && (
-                <span className="text-xs text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full font-medium">
-                  {planLabel} plan
-                </span>
-              )}
-            </div>
-          )}
+          <span className="font-bold text-gray-900">FitSquad <span className="text-brand-600">Business</span></span>
         </div>
 
-        {/* Navigation */}
+        {company && (
+          <div className="px-6 py-3 border-b border-gray-100">
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Company</p>
+            <p className="text-sm font-semibold text-gray-800 truncate mt-0.5">{company.name}</p>
+            <span className="text-xs text-brand-600 capitalize font-medium">{company.plan} plan</span>
+          </div>
+        )}
+
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/admin'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </NavLink>
-          ))}
+          {nav.map(({ to, label, icon: Icon }) => {
+            const active = location.pathname === to
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  active ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
-        {/* User */}
         <div className="px-3 py-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
-            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-brand-700 text-xs font-bold">
-                {(userProfile?.displayName || currentUser?.email || 'A')[0].toUpperCase()}
-              </span>
+          <div className="flex items-center gap-3 px-3 py-2 mb-1">
+            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 font-semibold text-sm">
+              {userProfile?.displayName?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-900 truncate">{userProfile?.displayName || 'Admin'}</p>
-              <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{userProfile?.displayName}</p>
+              <p className="text-xs text-gray-400">HR Admin</p>
             </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-colors" title="Sign out">
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 ml-60 min-h-screen">
-        {children}
-      </main>
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   )
 }

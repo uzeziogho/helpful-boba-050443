@@ -1,15 +1,6 @@
 import { createContext, useContext, useState } from 'react'
 import {
-  collection,
-  doc,
-  addDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  query,
-  where,
-  orderBy,
-  limit,
+  collection, doc, addDoc, getDoc, getDocs, updateDoc, query, where, orderBy, limit,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -47,6 +38,8 @@ function docToData(snap) {
 export function CompanyProvider({ children }) {
   const [company, setCompany] = useState(null)
 
+  // ── Company ─────────────────────────────────────────────────────────────────
+
   async function createCompany({ name, domain, plan, adminId, billingEmail }) {
     const ref = await addDoc(collection(db, 'companies'), {
       name,
@@ -56,17 +49,9 @@ export function CompanyProvider({ children }) {
       billingEmail,
       employeeSeats: PLANS[plan].seats === Infinity ? 9999 : PLANS[plan].seats,
     })
-    const newCompany = {
-      id: ref.id,
-      name,
-      domain: domain || '',
-      plan,
-      adminId,
-      billingEmail,
-      employeeSeats: PLANS[plan].seats === Infinity ? 9999 : PLANS[plan].seats,
-    }
-    setCompany(newCompany)
-    return newCompany
+    const data = { id: ref.id, name, domain: domain || '', plan, adminId, billingEmail }
+    setCompany(data)
+    return data
   }
 
   async function fetchCompany(companyId) {
@@ -79,14 +64,10 @@ export function CompanyProvider({ children }) {
     return null
   }
 
-  // ── Employees ──────────────────────────────────────────────────────────────
+  // ── Employees ───────────────────────────────────────────────────────────────
 
   async function getEmployees(companyId) {
-    const q = query(
-      collection(db, 'users'),
-      where('companyId', '==', companyId),
-      orderBy('displayName')
-    )
+    const q = query(collection(db, 'users'), where('companyId', '==', companyId), orderBy('displayName'))
     const snap = await getDocs(q)
     return snap.docs.map(docToData)
   }
@@ -96,18 +77,13 @@ export function CompanyProvider({ children }) {
       collection(db, 'invitations'),
       where('companyId', '==', companyId),
       where('email', '==', email),
-      where('status', '==', 'pending')
+      where('status', '==', 'pending'),
     )
     const existing = await getDocs(q)
     if (!existing.empty) throw new Error('Invitation already pending for this email.')
-
     const ref = await addDoc(collection(db, 'invitations'), {
-      companyId,
-      email,
-      role: role || 'employee',
-      department: department || '',
-      invitedBy,
-      status: 'pending',
+      companyId, email, role: role || 'employee', department: department || '',
+      invitedBy, status: 'pending', createdAt: new Date().toISOString(),
     })
     return { id: ref.id }
   }
@@ -120,14 +96,10 @@ export function CompanyProvider({ children }) {
     await updateDoc(doc(db, 'users', uid), { role, department })
   }
 
-  // ── Challenges ─────────────────────────────────────────────────────────────
+  // ── Challenges ──────────────────────────────────────────────────────────────
 
   async function getChallenges(companyId) {
-    const q = query(
-      collection(db, 'challenges'),
-      where('companyId', '==', companyId),
-      orderBy('createdAt', 'desc')
-    )
+    const q = query(collection(db, 'challenges'), where('companyId', '==', companyId), orderBy('createdAt', 'desc'))
     const snap = await getDocs(q)
     return snap.docs.map(docToData)
   }
@@ -135,16 +107,8 @@ export function CompanyProvider({ children }) {
   async function createChallenge({ companyId, title, description, type, goal, startDate, endDate, createdBy }) {
     const createdAt = new Date().toISOString()
     const ref = await addDoc(collection(db, 'challenges'), {
-      companyId,
-      title,
-      description,
-      type,
-      goal: Number(goal),
-      startDate,
-      endDate,
-      createdBy,
-      isActive: true,
-      createdAt,
+      companyId, title, description, type, goal: Number(goal),
+      startDate, endDate, createdBy, isActive: true, createdAt,
     })
     return { id: ref.id, companyId, title, description, type, goal: Number(goal), startDate, endDate, createdBy, isActive: true, createdAt }
   }
@@ -153,95 +117,59 @@ export function CompanyProvider({ children }) {
     await updateDoc(doc(db, 'challenges', challengeId), { isActive })
   }
 
-  // ── Workouts ───────────────────────────────────────────────────────────────
+  // ── Workouts ────────────────────────────────────────────────────────────────
 
   async function logWorkout({ userId, userName, companyId, challengeId, type, duration, notes }) {
     const ref = await addDoc(collection(db, 'workouts'), {
-      userId,
-      userName,
-      companyId,
-      challengeId: challengeId || null,
-      type,
-      duration: Number(duration),
-      notes: notes || '',
+      userId, userName, companyId, challengeId: challengeId || null,
+      type, duration: Number(duration), notes: notes || '',
       createdAt: new Date().toISOString(),
     })
     return { id: ref.id }
   }
 
   async function getWorkouts(companyId, lim = 50) {
-    const q = query(
-      collection(db, 'workouts'),
-      where('companyId', '==', companyId),
-      orderBy('createdAt', 'desc'),
-      limit(lim)
-    )
+    const q = query(collection(db, 'workouts'), where('companyId', '==', companyId), orderBy('createdAt', 'desc'), limit(lim))
     const snap = await getDocs(q)
     return snap.docs.map(docToData)
   }
 
   async function getMyWorkouts(userId) {
-    const q = query(
-      collection(db, 'workouts'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    )
+    const q = query(collection(db, 'workouts'), where('userId', '==', userId), orderBy('createdAt', 'desc'))
     const snap = await getDocs(q)
     return snap.docs.map(docToData)
   }
 
-  // ── Reports ────────────────────────────────────────────────────────────────
+  // ── Reports ─────────────────────────────────────────────────────────────────
 
   async function getParticipationReport(companyId) {
-    const [workouts, employees] = await Promise.all([
-      getWorkouts(companyId, 1000),
-      getEmployees(companyId),
-    ])
-
+    const [workouts, employees] = await Promise.all([getWorkouts(companyId, 1000), getEmployees(companyId)])
     const activeEmployeeIds = new Set(workouts.map((w) => w.userId))
     const totalMinutes = workouts.reduce((sum, w) => sum + (w.duration || 0), 0)
-
     const byEmployee = {}
     workouts.forEach((w) => {
-      if (!byEmployee[w.userId]) {
-        byEmployee[w.userId] = { name: w.userName, sessions: 0, minutes: 0 }
-      }
+      if (!byEmployee[w.userId]) byEmployee[w.userId] = { name: w.userName, sessions: 0, minutes: 0 }
       byEmployee[w.userId].sessions += 1
       byEmployee[w.userId].minutes += w.duration || 0
     })
-
-    const leaderboard = Object.values(byEmployee)
-      .sort((a, b) => b.minutes - a.minutes)
-      .slice(0, 10)
-
+    const leaderboard = Object.values(byEmployee).sort((a, b) => b.minutes - a.minutes).slice(0, 10)
     const activeEmployees = employees.filter((e) => e.isActive)
     return {
       totalEmployees: activeEmployees.length,
       activeParticipants: activeEmployeeIds.size,
       totalSessions: workouts.length,
       totalMinutes,
-      participationRate: activeEmployees.length
-        ? Math.round((activeEmployeeIds.size / activeEmployees.length) * 100)
-        : 0,
+      participationRate: activeEmployees.length ? Math.round((activeEmployeeIds.size / activeEmployees.length) * 100) : 0,
       leaderboard,
     }
   }
 
   const value = {
-    company,
-    setCompany,
-    createCompany,
-    fetchCompany,
-    getEmployees,
-    inviteEmployee,
-    deactivateEmployee,
-    updateEmployeeRole,
-    getChallenges,
-    createChallenge,
-    toggleChallenge,
-    logWorkout,
-    getWorkouts,
-    getMyWorkouts,
+    company, setCompany,
+    createCompany, fetchCompany,
+    getEmployees, inviteEmployee, deactivateEmployee, updateEmployeeRole,
+    getChallenges, createChallenge, toggleChallenge,
+    logWorkout, getWorkouts, getMyWorkouts,
     getParticipationReport,
   }
 

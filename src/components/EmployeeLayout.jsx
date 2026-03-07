@@ -1,84 +1,75 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Dumbbell, Trophy, BarChart2, LogOut, Zap } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, Dumbbell, Trophy, Medal, LogOut, Zap } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { useCompany } from '../contexts/CompanyContext'
 import toast from 'react-hot-toast'
 
-const NAV = [
-  { to: '/me', icon: LayoutDashboard, label: 'My Dashboard' },
-  { to: '/me/workouts', icon: Dumbbell, label: 'Log Workout' },
-  { to: '/me/challenges', icon: Trophy, label: 'Challenges' },
-  { to: '/me/leaderboard', icon: BarChart2, label: 'Leaderboard' },
+const nav = [
+  { to: '/me', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/me/workouts', label: 'Workouts', icon: Dumbbell },
+  { to: '/me/challenges', label: 'Challenges', icon: Trophy },
+  { to: '/me/leaderboard', label: 'Leaderboard', icon: Medal },
 ]
 
 export default function EmployeeLayout({ children }) {
-  const { currentUser, userProfile, logout } = useAuth()
-  const { company } = useCompany()
+  const { userProfile, logout } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
 
   async function handleLogout() {
     await logout()
     toast.success('Signed out')
-    navigate('/')
+    navigate('/login')
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col fixed h-full">
-        <div className="px-5 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">FitSquad <span className="text-brand-600">Business</span></span>
+    <div className="flex h-screen bg-gray-50">
+      <aside className="w-64 bg-white border-r border-gray-100 flex flex-col">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+            <Zap className="w-5 h-5 text-white" />
           </div>
-          {company && (
-            <p className="text-xs text-gray-500 mt-2 truncate">{company.name}</p>
-          )}
+          <span className="font-bold text-gray-900">FitSquad <span className="text-brand-600">Business</span></span>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/me'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </NavLink>
-          ))}
+          {nav.map(({ to, label, icon: Icon }) => {
+            const active = location.pathname === to
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  active ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-3 py-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
-            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-brand-700 text-xs font-bold">
-                {(userProfile?.displayName || currentUser?.email || 'U')[0].toUpperCase()}
-              </span>
+          <div className="flex items-center gap-3 px-3 py-2 mb-1">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-semibold text-sm">
+              {userProfile?.displayName?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-900 truncate">{userProfile?.displayName || 'Employee'}</p>
-              <p className="text-xs text-gray-400 truncate capitalize">{userProfile?.department || 'No department'}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{userProfile?.displayName}</p>
+              <p className="text-xs text-gray-400 capitalize">{userProfile?.department || 'Employee'}</p>
             </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-colors" title="Sign out">
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
         </div>
       </aside>
 
-      <main className="flex-1 ml-60 min-h-screen">
-        {children}
-      </main>
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   )
 }
